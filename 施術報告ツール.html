@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>施術報告ツール</title>
+<style>
+  :root{
+    --main:#2e7d63;
+    --main-dark:#1f5c48;
+    --accent:#e8734a;
+    --bg:#f6f4ef;
+    --card:#ffffff;
+    --border:#dcd6c9;
+    --text:#2b2b28;
+    --muted:#767066;
+    --selected:#2e7d63;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    padding-bottom:40px;
+  }
+  .app{max-width:520px;margin:0 auto;padding:16px;}
+  header{
+    text-align:center;
+    padding:18px 8px 22px;
+  }
+  header h1{
+    font-size:22px;
+    margin:0 0 4px;
+    color:var(--main-dark);
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .gear{
+    position:fixed;
+    top:14px;
+    right:14px;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:var(--card);
+    border:1px solid var(--border);
+    font-size:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+  }
+  section.card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .step-title{
+    font-size:16px;
+    font-weight:700;
+    margin:0 0 12px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .step-num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;height:24px;
+    border-radius:50%;
+    background:var(--main);
+    color:#fff;
+    font-size:13px;
+    flex-shrink:0;
+  }
+  .btn-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .tap-btn{
+    flex:1 1 auto;
+    min-width:88px;
+    min-height:52px;
+    padding:10px 14px;
+    border-radius:12px;
+    border:2px solid var(--border);
+    background:#fff;
+    color:var(--text);
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    text-align:center;
+  }
+  .tap-btn.selected{
+    background:var(--selected);
+    border-color:var(--selected);
+    color:#fff;
+  }
+  .tap-btn.add{
+    background:#fbf6ee;
+    border-style:dashed;
+    color:var(--accent);
+  }
+  .tap-btn.small{
+    min-height:44px;
+    font-size:14px;
+    padding:8px 12px;
+  }
+  .tap-btn.remove{
+    margin-left:6px;
+    background:none;
+    border:none;
+    color:#c0392b;
+    font-size:18px;
+    min-height:auto;
+    min-width:auto;
+    padding:0 6px;
+  }
+  .client-row{
+    display:flex;
+    align-items:center;
+    margin-bottom:2px;
+  }
+  input[type=date]{
+    width:100%;
+    min-height:54px;
+    font-size:18px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:2px solid var(--border);
+    margin-top:10px;
+    background:#fff;
+  }
+  .hint{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:8px;
+  }
+  textarea{
+    width:100%;
+    min-height:70px;
+    font-size:16px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:2px solid var(--border);
+    margin-top:10px;
+    font-family:inherit;
+    resize:vertical;
+  }
+  .preview-box{
+    background:#f2f7f4;
+    border:2px solid var(--main);
+    border-radius:12px;
+    padding:14px;
+    font-size:16px;
+    line-height:1.7;
+    white-space:pre-wrap;
+    min-height:100px;
+  }
+  .action-btn{
+    display:block;
+    width:100%;
+    min-height:58px;
+    border-radius:14px;
+    border:none;
+    font-size:17px;
+    font-weight:700;
+    margin-bottom:10px;
+    cursor:pointer;
+  }
+  .action-btn.primary{background:var(--accent);color:#fff;}
+  .action-btn.secondary{background:var(--main);color:#fff;}
+  .action-btn.tertiary{background:#fff;color:var(--main-dark);border:2px solid var(--main);}
+  .history-item{
+    border-bottom:1px solid var(--border);
+    padding:10px 2px;
+    font-size:14px;
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    align-items:flex-start;
+  }
+  .history-item:last-child{border-bottom:none;}
+  .history-text{white-space:pre-wrap;flex:1;color:var(--text);}
+  .history-item .del{
+    background:none;border:none;color:#c0392b;font-size:16px;padding:2px 6px;
+  }
+  .empty{
+    color:var(--muted);
+    font-size:14px;
+    text-align:center;
+    padding:10px 0;
+  }
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(0,0,0,.4);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-bg.open{display:flex;}
+  .modal{
+    background:#fff;border-radius:16px;padding:20px;max-width:400px;width:100%;
+  }
+  .modal h3{margin-top:0;font-size:17px;}
+  .modal input[type=text]{
+    width:100%;min-height:48px;font-size:16px;padding:8px 12px;border-radius:10px;
+    border:2px solid var(--border);margin-bottom:14px;
+  }
+  .modal-actions{display:flex;gap:10px;}
+  .modal-actions button{flex:1;min-height:48px;border-radius:10px;border:none;font-size:15px;font-weight:700;}
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:#2b2b28;color:#fff;padding:10px 18px;border-radius:20px;
+    font-size:14px;opacity:0;transition:opacity .3s;z-index:60;pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<button class="gear" onclick="openSettings()">⚙</button>
+
+<div class="app">
+  <header>
+    <h1>施術報告ツール</h1>
+    <p>タップだけで記録・共有できます</p>
+  </header>
+
+  <section class="card">
+    <p class="step-title"><span class="step-num">1</span>お客様</p>
+    <div id="clientList" class="btn-grid"></div>
+    <p class="hint">お客様が見つからない場合は「＋追加」をタップ（最初の1回だけ入力すれば、次回からはタップだけでOKです）</p>
+  </section>
+
+  <section class="card">
+    <p class="step-title"><span class="step-num">2</span>次回施術日</p>
+    <div class="btn-grid">
+      <button class="tap-btn small" onclick="setQuickDate(0)">今日</button>
+      <button class="tap-btn small" onclick="setQuickDate(1)">明日</button>
+      <button class="tap-btn small" onclick="setQuickDate(7)">1週間後</button>
+      <button class="tap-btn small" onclick="setQuickDate(14)">2週間後</button>
+      <button class="tap-btn small" onclick="setQuickDate(30)">1ヶ月後</button>
+    </div>
+    <input type="date" id="dateInput" onchange="onDateChange()">
+  </section>
+
+  <section class="card">
+    <p class="step-title"><span class="step-num">3</span>施術区分</p>
+    <div class="btn-grid" id="planGroup">
+      <button class="tap-btn" data-val="保険適用">保険適用</button>
+      <button class="tap-btn" data-val="自費">自費</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <p class="step-title"><span class="step-num">4</span>施術部位（複数選択可）</p>
+    <div class="btn-grid" id="partGroup">
+      <button class="tap-btn" data-val="肩">肩</button>
+      <button class="tap-btn" data-val="腰">腰</button>
+      <button class="tap-btn" data-val="膝">膝</button>
+      <button class="tap-btn" data-val="全身">全身</button>
+      <button class="tap-btn" data-val="その他">その他</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <p class="step-title"><span class="step-num">5</span>経過</p>
+    <div class="btn-grid" id="conditionGroup">
+      <button class="tap-btn" data-val="順調">順調</button>
+      <button class="tap-btn" data-val="経過観察">経過観察</button>
+      <button class="tap-btn" data-val="要相談">要相談</button>
+    </div>
+    <textarea id="memoInput" placeholder="メモ（任意・マイク入力も使えます）" onkeyup="updatePreview()"></textarea>
+  </section>
+
+  <section class="card">
+    <p class="step-title">📋 内容確認</p>
+    <div class="preview-box" id="previewBox">お客様・日付・区分を選択してください</div>
+  </section>
+
+  <section class="card">
+    <button class="action-btn primary" onclick="doShare()">📤 野崎さんに共有（LINE・メール）</button>
+    <button class="action-btn secondary" onclick="addToGoogleCalendar()">📅 Googleカレンダーに追加</button>
+    <button class="action-btn tertiary" onclick="downloadIcs()">🗓 カレンダーファイル(.ics)を保存</button>
+    <button class="action-btn tertiary" onclick="saveRecord()">✅ この内容を記録として保存</button>
+  </section>
+
+  <section class="card">
+    <p class="step-title">📖 本日の記録</p>
+    <div id="historyList"></div>
+  </section>
+</div>
+
+<div class="modal-bg" id="clientModal">
+  <div class="modal">
+    <h3>お客様を追加</h3>
+    <input type="text" id="newClientName" placeholder="お客様のお名前">
+    <div class="modal-actions">
+      <button style="background:#eee;color:#333" onclick="closeModal()">キャンセル</button>
+      <button style="background:var(--main);color:#fff" onclick="confirmAddClient()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>設定</h3>
+    <input type="text" id="staffNameInput" placeholder="あなたのお名前（施術者名）">
+    <p class="hint" style="margin-bottom:14px;">共有メッセージにお名前が入ります。野崎さんへの共有は「共有」ボタンから、お使いのLINEやメールアプリを選んで送信してください。</p>
+    <div class="modal-actions">
+      <button style="background:#eee;color:#333" onclick="closeSettings()">閉じる</button>
+      <button style="background:var(--main);color:#fff" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const state = {
+  client: null,
+  date: null,
+  plan: null,
+  parts: [],
+  condition: null,
+};
+
+function loadClients(){ return JSON.parse(localStorage.getItem('clients')||'[]'); }
+function saveClients(list){ localStorage.setItem('clients', JSON.stringify(list)); }
+function loadRecords(){ return JSON.parse(localStorage.getItem('records')||'[]'); }
+function saveRecords(list){ localStorage.setItem('records', JSON.stringify(list)); }
+function getStaffName(){ return localStorage.getItem('staffName')||''; }
+
+function renderClients(){
+  const wrap = document.getElementById('clientList');
+  const clients = loadClients();
+  wrap.innerHTML = '';
+  if(clients.length===0){
+    const p = document.createElement('p');
+    p.className='empty';
+    p.textContent='まだお客様が登録されていません';
+    wrap.appendChild(p);
+  }
+  clients.forEach(name=>{
+    const row = document.createElement('div');
+    row.className='client-row';
+    const btn = document.createElement('button');
+    btn.className='tap-btn'+(state.client===name?' selected':'');
+    btn.textContent = name;
+    btn.style.flex='1 1 auto';
+    btn.onclick = ()=>{ state.client=name; renderClients(); updatePreview(); };
+    row.appendChild(btn);
+    const del = document.createElement('button');
+    del.className='tap-btn remove';
+    del.textContent='×';
+    del.onclick=(e)=>{
+      e.stopPropagation();
+      if(confirm(name+' をリストから削除しますか？')){
+        const updated = loadClients().filter(c=>c!==name);
+        saveClients(updated);
+        if(state.client===name) state.client=null;
+        renderClients();
+        updatePreview();
+      }
+    };
+    row.appendChild(del);
+    wrap.appendChild(row);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className='tap-btn add';
+  addBtn.textContent='＋追加';
+  addBtn.onclick = openClientModal;
+  wrap.appendChild(addBtn);
+}
+
+function openClientModal(){
+  document.getElementById('newClientName').value='';
+  document.getElementById('clientModal').classList.add('open');
+}
+function closeModal(){ document.getElementById('clientModal').classList.remove('open'); }
+function confirmAddClient(){
+  const name = document.getElementById('newClientName').value.trim();
+  if(!name){ closeModal(); return; }
+  const clients = loadClients();
+  if(!clients.includes(name)) clients.push(name);
+  saveClients(clients);
+  state.client = name;
+  closeModal();
+  renderClients();
+  updatePreview();
+}
+
+function openSettings(){
+  document.getElementById('staffNameInput').value = getStaffName();
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
+function saveSettings(){
+  localStorage.setItem('staffName', document.getElementById('staffNameInput').value.trim());
+  closeSettings();
+  updatePreview();
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function toDateStr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function setQuickDate(daysAhead){
+  const d = new Date();
+  d.setDate(d.getDate()+daysAhead);
+  const str = toDateStr(d);
+  document.getElementById('dateInput').value = str;
+  state.date = str;
+  updatePreview();
+}
+function onDateChange(){
+  state.date = document.getElementById('dateInput').value;
+  updatePreview();
+}
+
+function setupGroup(id, singleSelect, target){
+  document.querySelectorAll('#'+id+' .tap-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      const val = btn.dataset.val;
+      if(singleSelect){
+        state[target] = (state[target]===val)? null : val;
+        document.querySelectorAll('#'+id+' .tap-btn').forEach(b=>b.classList.toggle('selected', b.dataset.val===state[target]));
+      } else {
+        const idx = state[target].indexOf(val);
+        if(idx>-1){ state[target].splice(idx,1); btn.classList.remove('selected'); }
+        else { state[target].push(val); btn.classList.add('selected'); }
+      }
+      updatePreview();
+    };
+  });
+}
+setupGroup('planGroup', true, 'plan');
+setupGroup('partGroup', false, 'parts');
+setupGroup('conditionGroup', true, 'condition');
+
+function formatDateJp(str){
+  if(!str) return '';
+  const d = new Date(str+'T00:00:00');
+  const w = ['日','月','火','水','木','金','土'][d.getDay()];
+  return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日('+w+')';
+}
+
+function buildMessage(){
+  if(!state.client && !state.date && !state.plan) return null;
+  const lines = [];
+  lines.push('【施術報告】');
+  lines.push('お客様：'+(state.client||'（未選択）'));
+  lines.push('次回施術日：'+(state.date?formatDateJp(state.date):'（未選択）'));
+  const planParts = [];
+  if(state.plan) planParts.push(state.plan);
+  if(state.parts.length) planParts.push(state.parts.join('・'));
+  lines.push('内容：'+(planParts.length?planParts.join(' / '):'（未選択）'));
+  if(state.condition) lines.push('経過：'+state.condition);
+  const memo = document.getElementById('memoInput').value.trim();
+  if(memo) lines.push('メモ：'+memo);
+  const staff = getStaffName();
+  if(staff) lines.push('報告者：'+staff);
+  lines.push('宛先：野崎様');
+  return lines.join('\n');
+}
+
+function updatePreview(){
+  const msg = buildMessage();
+  document.getElementById('previewBox').textContent = msg || 'お客様・日付・区分を選択してください';
+}
+
+function showToast(text){
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+async function doShare(){
+  const msg = buildMessage();
+  if(!state.client || !state.date){
+    alert('お客様と次回施術日を選択してください');
+    return;
+  }
+  if(navigator.share){
+    try{
+      await navigator.share({ title:'施術報告', text: msg });
+    }catch(e){ /* user cancelled */ }
+  } else {
+    try{
+      await navigator.clipboard.writeText(msg);
+      showToast('内容をコピーしました。LINEやメールに貼り付けて送ってください');
+    }catch(e){
+      alert(msg);
+    }
+  }
+}
+
+function addToGoogleCalendar(){
+  if(!state.client || !state.date){
+    alert('お客様と次回施術日を選択してください');
+    return;
+  }
+  const d = new Date(state.date+'T00:00:00');
+  const d2 = new Date(d); d2.setDate(d2.getDate()+1);
+  const fmt = (dt)=> dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate());
+  const title = encodeURIComponent('施術：'+state.client+'様');
+  const details = encodeURIComponent(buildMessage());
+  const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+title+'&dates='+fmt(d)+'/'+fmt(d2)+'&details='+details;
+  window.open(url, '_blank');
+}
+
+function downloadIcs(){
+  if(!state.client || !state.date){
+    alert('お客様と次回施術日を選択してください');
+    return;
+  }
+  const d = state.date.replace(/-/g,'');
+  const d2Date = new Date(state.date+'T00:00:00'); d2Date.setDate(d2Date.getDate()+1);
+  const d2 = toDateStr(d2Date).replace(/-/g,'');
+  const uid = 'shujutsu-'+Date.now()+'@houmon';
+  const ics = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//houmon-massage//jp',
+    'BEGIN:VEVENT',
+    'UID:'+uid,
+    'DTSTART;VALUE=DATE:'+d,
+    'DTEND;VALUE=DATE:'+d2,
+    'SUMMARY:施術：'+state.client+'様',
+    'DESCRIPTION:'+buildMessage().replace(/\n/g,'\\n'),
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ics], {type:'text/calendar'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '施術予定_'+state.client+'_'+state.date+'.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function saveRecord(){
+  if(!state.client || !state.date){
+    alert('お客様と次回施術日を選択してください');
+    return;
+  }
+  const records = loadRecords();
+  records.unshift({
+    id: Date.now(),
+    text: buildMessage(),
+    createdAt: new Date().toLocaleString('ja-JP')
+  });
+  saveRecords(records);
+  renderHistory();
+  showToast('記録を保存しました');
+}
+
+function renderHistory(){
+  const wrap = document.getElementById('historyList');
+  const records = loadRecords();
+  wrap.innerHTML = '';
+  if(records.length===0){
+    wrap.innerHTML = '<p class="empty">まだ記録がありません</p>';
+    return;
+  }
+  records.forEach(r=>{
+    const item = document.createElement('div');
+    item.className='history-item';
+    const textDiv = document.createElement('div');
+    textDiv.className='history-text';
+    textDiv.textContent = '['+r.createdAt+']\n'+r.text;
+    item.appendChild(textDiv);
+    const del = document.createElement('button');
+    del.className='del';
+    del.textContent='×';
+    del.onclick = ()=>{
+      const updated = loadRecords().filter(x=>x.id!==r.id);
+      saveRecords(updated);
+      renderHistory();
+    };
+    item.appendChild(del);
+    wrap.appendChild(item);
+  });
+}
+
+renderClients();
+renderHistory();
+updatePreview();
+</script>
+</body>
+</html>
