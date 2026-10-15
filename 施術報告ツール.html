@@ -115,6 +115,10 @@
     font-size:14px;
     padding:8px 12px;
   }
+  .tap-btn.time{
+    min-width:64px;
+    flex:1 1 64px;
+  }
   .tap-btn.remove{
     margin-left:6px;
     background:none;
@@ -130,7 +134,7 @@
     align-items:center;
     margin-bottom:2px;
   }
-  input[type=date]{
+  input[type=date], input[type=time]{
     width:100%;
     min-height:54px;
     font-size:18px;
@@ -139,6 +143,27 @@
     border:2px solid var(--border);
     margin-top:10px;
     background:#fff;
+  }
+  .sub-label{
+    font-size:14px;
+    font-weight:700;
+    color:var(--main-dark);
+    margin:18px 0 8px;
+  }
+  .time-row{
+    display:flex;
+    gap:10px;
+  }
+  .time-row label{
+    flex:1;
+    font-size:13px;
+    color:var(--muted);
+    margin-top:10px;
+  }
+  .time-row label input{margin-top:4px;}
+  .time-clear{
+    margin-top:10px;
+    width:100%;
   }
   .hint{
     color:var(--muted);
@@ -240,7 +265,7 @@
   </section>
 
   <section class="card">
-    <p class="step-title"><span class="step-num">2</span>次回施術日</p>
+    <p class="step-title"><span class="step-num">2</span>次回施術日・時間</p>
     <div class="btn-grid">
       <button class="tap-btn small" onclick="setQuickDate(0)">今日</button>
       <button class="tap-btn small" onclick="setQuickDate(1)">明日</button>
@@ -249,6 +274,29 @@
       <button class="tap-btn small" onclick="setQuickDate(30)">1ヶ月後</button>
     </div>
     <input type="date" id="dateInput" onchange="onDateChange()">
+
+    <p class="sub-label">何時から（任意）</p>
+    <div class="btn-grid" id="timeQuick">
+      <button class="tap-btn small time" data-time="09:00" onclick="setQuickTime('09:00')">9:00</button>
+      <button class="tap-btn small time" data-time="10:00" onclick="setQuickTime('10:00')">10:00</button>
+      <button class="tap-btn small time" data-time="11:00" onclick="setQuickTime('11:00')">11:00</button>
+      <button class="tap-btn small time" data-time="12:00" onclick="setQuickTime('12:00')">12:00</button>
+      <button class="tap-btn small time" data-time="13:00" onclick="setQuickTime('13:00')">13:00</button>
+      <button class="tap-btn small time" data-time="14:00" onclick="setQuickTime('14:00')">14:00</button>
+      <button class="tap-btn small time" data-time="15:00" onclick="setQuickTime('15:00')">15:00</button>
+      <button class="tap-btn small time" data-time="16:00" onclick="setQuickTime('16:00')">16:00</button>
+      <button class="tap-btn small time" data-time="17:00" onclick="setQuickTime('17:00')">17:00</button>
+    </div>
+    <div class="time-row">
+      <label>開始時間
+        <input type="time" id="timeInput" onchange="onTimeChange()">
+      </label>
+      <label>終了時間（自動で30分後）
+        <input type="time" id="endTimeInput" onchange="onEndTimeChange()">
+      </label>
+    </div>
+    <button class="tap-btn small time-clear" onclick="clearTime()">時間をクリア（終日扱い）</button>
+    <p class="hint">時間を入れない場合は、これまで通り日付のみ（終日）で記録されます。開始時間を選ぶと終了時間は自動で30分後が入ります（変更も可能です）。</p>
   </section>
 
   <section class="card">
@@ -327,6 +375,9 @@
 const state = {
   client: null,
   date: null,
+  time: null,      // 開始時間 "HH:MM"（任意）
+  endTime: null,   // 終了時間 "HH:MM"（開始＋30分を自動入力、手動変更可）
+  endAuto: false,  // 終了時間が自動入力のままか
   plan: null,
   parts: [],
   condition: null,
@@ -423,6 +474,65 @@ function onDateChange(){
   updatePreview();
 }
 
+/* ---------- 時間（開始・終了） ---------- */
+function syncQuickTime(){
+  document.querySelectorAll('#timeQuick .tap-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.time===state.time);
+  });
+}
+function addMinutes(t, min){
+  const [h,m] = t.split(':').map(Number);
+  const tot = h*60 + m + min;
+  if(tot >= 1440) return '';   // 日をまたぐ場合は自動入力しない
+  return pad(Math.floor(tot/60)) + ':' + pad(tot%60);
+}
+function onTimeChange(){
+  const sEl = document.getElementById('timeInput');
+  const eEl = document.getElementById('endTimeInput');
+  if(sEl.value){
+    // 終了が空、または自動入力のままなら、開始＋30分を自動で入れる
+    if(!eEl.value || state.endAuto){
+      eEl.value = addMinutes(sEl.value, 30);
+      state.endAuto = !!eEl.value;
+    }
+  } else if(state.endAuto){
+    eEl.value = '';
+    state.endAuto = false;
+  }
+  state.time = sEl.value || null;
+  state.endTime = eEl.value || null;
+  syncQuickTime();
+  updatePreview();
+}
+function onEndTimeChange(){
+  state.endAuto = false;   // 手入力した終了時間は自動更新しない
+  onTimeChange();
+}
+function setQuickTime(t){
+  document.getElementById('timeInput').value = t;
+  onTimeChange();
+}
+function clearTime(){
+  document.getElementById('timeInput').value = '';
+  document.getElementById('endTimeInput').value = '';
+  onTimeChange();
+}
+function validTime(){
+  if(state.endTime && !state.time){
+    alert('終了時間を入れる場合は、開始時間（何時から）も入力してください');
+    return false;
+  }
+  if(state.time && state.endTime && state.endTime <= state.time){
+    alert('終了時間は開始時間より後にしてください');
+    return false;
+  }
+  return true;
+}
+function formatTimeJp(){
+  if(!state.time) return '';
+  return state.time + '〜' + (state.endTime || '');
+}
+
 function setupGroup(id, singleSelect, target){
   document.querySelectorAll('#'+id+' .tap-btn').forEach(btn=>{
     btn.onclick = ()=>{
@@ -455,7 +565,9 @@ function buildMessage(){
   const lines = [];
   lines.push('【施術報告】');
   lines.push('お客様：'+(state.client||'（未選択）'));
-  lines.push('次回施術日：'+(state.date?formatDateJp(state.date):'（未選択）'));
+  let when = state.date ? formatDateJp(state.date) : '（未選択）';
+  if(state.date && state.time) when += ' ' + formatTimeJp();
+  lines.push('次回施術日：'+when);
   const planParts = [];
   if(state.plan) planParts.push(state.plan);
   if(state.parts.length) planParts.push(state.parts.join('・'));
@@ -487,6 +599,7 @@ async function doShare(){
     alert('お客様と次回施術日を選択してください');
     return;
   }
+  if(!validTime()) return;
   if(navigator.share){
     try{
       await navigator.share({ title:'施術報告', text: msg });
@@ -501,17 +614,38 @@ async function doShare(){
   }
 }
 
+/* カレンダー用の開始・終了を作る（時間なし＝終日、時間あり＝日時指定） */
+function buildEventRange(){
+  const dayStart = new Date(state.date+'T00:00:00');
+  if(!state.time){
+    const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate()+1);
+    const fmtD = (dt)=> dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate());
+    return { allDay:true, start:fmtD(dayStart), end:fmtD(dayEnd) };
+  }
+  const [h,m] = state.time.split(':').map(Number);
+  const start = new Date(dayStart); start.setHours(h, m, 0, 0);
+  let end;
+  if(state.endTime){
+    const [eh,em] = state.endTime.split(':').map(Number);
+    end = new Date(dayStart); end.setHours(eh, em, 0, 0);
+  } else {
+    end = new Date(start.getTime() + 30*60*1000); // 終了未入力は30分
+  }
+  const fmtDT = (dt)=> dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+'T'+pad(dt.getHours())+pad(dt.getMinutes())+'00';
+  return { allDay:false, start:fmtDT(start), end:fmtDT(end) };
+}
+
 function addToGoogleCalendar(){
   if(!state.client || !state.date){
     alert('お客様と次回施術日を選択してください');
     return;
   }
-  const d = new Date(state.date+'T00:00:00');
-  const d2 = new Date(d); d2.setDate(d2.getDate()+1);
-  const fmt = (dt)=> dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate());
+  if(!validTime()) return;
+  const r = buildEventRange();
   const title = encodeURIComponent('施術：'+state.client+'様');
   const details = encodeURIComponent(buildMessage());
-  const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+title+'&dates='+fmt(d)+'/'+fmt(d2)+'&details='+details;
+  let url = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+title+'&dates='+r.start+'/'+r.end+'&details='+details;
+  if(!r.allDay) url += '&ctz=Asia/Tokyo';
   window.open(url, '_blank');
 }
 
@@ -520,16 +654,17 @@ function downloadIcs(){
     alert('お客様と次回施術日を選択してください');
     return;
   }
-  const d = state.date.replace(/-/g,'');
-  const d2Date = new Date(state.date+'T00:00:00'); d2Date.setDate(d2Date.getDate()+1);
-  const d2 = toDateStr(d2Date).replace(/-/g,'');
+  if(!validTime()) return;
+  const r = buildEventRange();
   const uid = 'shujutsu-'+Date.now()+'@houmon';
+  const dtLines = r.allDay
+    ? ['DTSTART;VALUE=DATE:'+r.start, 'DTEND;VALUE=DATE:'+r.end]
+    : ['DTSTART:'+r.start, 'DTEND:'+r.end];
   const ics = [
     'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//houmon-massage//jp',
     'BEGIN:VEVENT',
     'UID:'+uid,
-    'DTSTART;VALUE=DATE:'+d,
-    'DTEND;VALUE=DATE:'+d2,
+    ...dtLines,
     'SUMMARY:施術：'+state.client+'様',
     'DESCRIPTION:'+buildMessage().replace(/\n/g,'\\n'),
     'END:VEVENT','END:VCALENDAR'
@@ -537,7 +672,7 @@ function downloadIcs(){
   const blob = new Blob([ics], {type:'text/calendar'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = '施術予定_'+state.client+'_'+state.date+'.ics';
+  a.download = '施術予定_'+state.client+'_'+state.date+(state.time?'_'+state.time.replace(':',''):'')+'.ics';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -548,6 +683,7 @@ function saveRecord(){
     alert('お客様と次回施術日を選択してください');
     return;
   }
+  if(!validTime()) return;
   const records = loadRecords();
   records.unshift({
     id: Date.now(),
